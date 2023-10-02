@@ -10,6 +10,6 @@ void setup() {
 void loop() {
   int val = analogRead(SOUND_ANALOG_PIN);
   Serial.print(val); Serial.print("\n");
-  delayMicroseconds(20);
+  delayMicroseconds(200);
 }
 
