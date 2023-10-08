@@ -90,7 +90,7 @@ void draw() {
     }
   }
   
-  float average = movingAverage.get(movingAverage.size()-1);
+  float average = movingAverage.size() > 0 ? movingAverage.get(movingAverage.size()-1) : 0;
   float noise = errorTotal/data.size() * 100;
   
   int dmin = 400;
@@ -98,6 +98,7 @@ void draw() {
   float hpm = (height-10.0)/(dmax - dmin);
   float wpm = (width-40.0)/(data.size()+1);
   
+  if(data.size() <= 0) return;
   background(0);
   
   noStroke();
