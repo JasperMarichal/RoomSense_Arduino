@@ -17,6 +17,17 @@ IntList numMeasurements;
 int newMeasurementsTotal;
 final int NEWMEASUREMENTS_SAMPLESIZE = 20;
 
+//Spike detection loosely based on: https://stackoverflow.com/questions/56692066/need-an-algorithm-to-detect-large-spikes-in-oscillating-data
+IntList spikeData;
+final int SPIKEDETECTION_WINDOW = 30;
+//How many times the noise value to activate/deactivate at
+final float SPIKEDETECTION_MULT_ACTIVATE = 2.5; 
+final float SPIKEDETECTION_MULT_DEACTIVATE = 0.2;
+
+boolean spikeDetected = false;
+int spikeDuration; //Spike duration in # of measurements
+float deactivationThreshold;
+
 //Toggle HUD with <TAB>
 boolean showHUD = true;
 //Toggle with <SPACE>
@@ -31,6 +42,7 @@ void setup() {
     port = new Serial(this, ports[0], 115200);
   }else println("Running in DEMO mode");
   data = new IntList();
+  spikeData = new IntList();
   
   movingAverage = new FloatList();
   numMeasurements = new IntList();
@@ -40,6 +52,28 @@ void setup() {
 }
 
 void onNewData(int val) {
+  //SPIKE DETECTION
+  if(data.size() > SPIKEDETECTION_WINDOW) {
+    if(spikeDetected) spikeDuration++;
+    int windowSum = 0;
+    for(int i = 1; i <= SPIKEDETECTION_WINDOW;i++) {
+      windowSum += abs(data.get(data.size()-1-i) -data.get(data.size()-i));
+    }
+    float noise = errorTotal/data.size() * 100;
+    if(!spikeDetected && windowSum >= noise*SPIKEDETECTION_MULT_ACTIVATE) {
+      spikeDetected = true;
+      deactivationThreshold = noise*SPIKEDETECTION_MULT_DEACTIVATE;
+      println("SPIKE EVENT START");
+      spikeDuration = 0;
+    }else if(spikeDetected && windowSum < deactivationThreshold) {
+      spikeDetected = false;
+      int mps = int(newMeasurementsTotal*frameRate/NEWMEASUREMENTS_SAMPLESIZE);
+      float durationMillis = float(spikeDuration)/int(newMeasurementsTotal*frameRate/NEWMEASUREMENTS_SAMPLESIZE)*1000;
+      println("SPIKE EVENT END dur: "+spikeDuration+" M -> @ "+mps+" M/s = "+durationMillis+" ms");
+    }
+    spikeData.append(spikeDetected ? 100 : 0);
+  }
+  //OTHER
   averageTotalSum += val;
   movingAverage.append(float(averageTotalSum)/data.size());
   errorTotal += abs(movingAverage.get(movingAverage.size()-1) - val);
@@ -48,6 +82,8 @@ void onNewData(int val) {
 void onDataRemoved(int val) {
   averageTotalSum -= val;
   errorTotal -= abs(movingAverage.remove(0) - val);
+  
+  spikeData.remove(0);
 }
 
 int fetchData() {
@@ -93,8 +129,8 @@ void draw() {
   float average = movingAverage.size() > 0 ? movingAverage.get(movingAverage.size()-1) : 0;
   float noise = errorTotal/data.size() * 100;
   
-  int dmin = 400;
-  int dmax = 600;
+  int dmin = int(average)-200;
+  int dmax = int(average)+200;
   float hpm = (height-10.0)/(dmax - dmin);
   float wpm = (width-40.0)/(data.size()+1);
   
@@ -104,6 +140,11 @@ void draw() {
   noStroke();
   fill(#111111);
   rect(0, (height-5.0-noise/2)-((average)-dmin)*hpm, width-40, noise);
+  
+  stroke(#0000ff);
+  for(int m = 0; m < spikeData.size()-1; m++) {
+    line((m)*wpm, (height-5.0)-((spikeData.get(m)+average-dmin)*hpm), (m+1)*wpm, (height-5.0)-((spikeData.get(m+1)+average-dmin)*hpm)); 
+  }
   
   stroke(#00ff00);
   for(int m = 0; m < data.size()-1; m++) {
@@ -128,6 +169,9 @@ void draw() {
     text("AVG: "+int(average*10)/10.0, 280, 20);
     text("NOISE: "+int(noise*100)/100.0, 420, 20);
     text("ERR: "+int(errorTotal), 420, 45);
+    text("SPIBUFF: "+spikeData.size(), 550, 20);
+    fill(#00ffff);
+    if(spikeDetected) text("SPIKE", 550, 45);
     
     
     fill(#00ff00);
