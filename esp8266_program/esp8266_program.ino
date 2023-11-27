@@ -3,15 +3,22 @@
 #include <ESP8266WiFi.h>
 #include <ArduinoWiFiServer.h>
 
+extern "C" {
+#include "user_interface.h"
+#include "wpa2_enterprise.h"
+#include "c_types.h"
+}
+
 #define EEPROM_RESET_ON_CHECKSUM_FAIL
 #define MAX_SERIALCMD_LENGTH 70
-#define DEFAULT_SERVER_PORT 80
+#define DEFAULT_SERVER_PORT 23
 
 struct EEPROMDataStruct {
   uint32_t checksum;
   uint16_t serverPort;
   char ssid[64];
   char password[64];
+  char user[64];
   uint32_t ip_address;
   uint32_t gw_address;
   uint32_t subnet_mask;
@@ -58,6 +65,7 @@ uint32_t calculateEEPROMChecksum() {
   _checksum += eepromData.serverPort;
   for(int i = 0; i < 64; i++) {
     _checksum += (uint8_t) eepromData.ssid[i];
+    _checksum += (uint8_t) eepromData.user[i];
     _checksum += (uint8_t) eepromData.password[i];
   }
   _checksum += eepromData.ip_address;
@@ -81,7 +89,7 @@ void stopStuff() {
   while(server.status()) delay(1);
   Serial.println("Server: STOPPED");
   WiFi.disconnect();
-  Serial.print("WiFi: DISCONNECTED ("); Serial.print(wl_status_to_string(WiFi.status())); Serial.println(")");
+  Serial.print("WiFi: DISCONNECTED ("); Serial.print(wl_status_to_string((wl_status_t) WiFi.waitForConnectResult())); Serial.println(")");
 }
 
 void resetConfig() {
@@ -97,6 +105,7 @@ void showConfig() {
   Serial.println("----- CURRENT CONFIG -----");
   Serial.print("WiFi SSID: "); Serial.println(eepromData.ssid);
   Serial.print("WiFi Password: "); Serial.println(eepromData.password);
+  Serial.print("WiFi Username (Enterprise): "); Serial.println(eepromData.user);
   Serial.print("Telnet server port: "); Serial.println(eepromData.serverPort);
   Serial.print("IP address: "); Serial.println(IPAddress(eepromData.ip_address));
   Serial.print("GW address: "); Serial.println(IPAddress(eepromData.gw_address));
@@ -149,16 +158,21 @@ uint32_t parseIPAddressString(String str) {
 void processCommand(String sbuff) {
   if(sbuff == "STOP") {
     stopStuff(); 
+
   }else if(sbuff == "STATUS") {
     showStatus(); 
+
   }else if(sbuff == "CONFIG SHOW") {
     showConfig(); 
+
   }else if(sbuff == "CONFIG RESET") {
     resetConfig();
+
   }else if(sbuff == "CONFIG EDIT") {
     stopStuff();
     eepromData.checksum = 0;
     if(eepromData.checksum == 0) Serial.println("You can now type config commands.");
+
   }else if(sbuff == "CONFIG COMMIT") {
     if(eepromData.checksum == calculateEEPROMChecksum()) {
       Serial.println("No modification detected. Not doing anything.");
@@ -171,33 +185,51 @@ void processCommand(String sbuff) {
       EEPROM.put(0, eepromData);
       Serial.println(EEPROM.commit() ? "OKAY" : "COMMIT FAIL");
     }
+
   }else if(sbuff == "CONFIG RESTORE") {
     Serial.print("Reloading from eeprom... "); Serial.println(reloadFromEEPROM() ? "DONE" : "CHECKSUM ERROR");
+
   }else if(eepromData.checksum == 0 && sbuff.startsWith("SSID ")) {
     sbuff.substring(5).toCharArray(eepromData.ssid, 64);
     Serial.print("SSID set to: \""); Serial.print(eepromData.ssid); Serial.println("\"");
+
   }else if(eepromData.checksum == 0 && sbuff.startsWith("PASS ")) {
     sbuff.substring(5).toCharArray(eepromData.password, 64);
     Serial.print("PASSWORD set to: \""); Serial.print(eepromData.password); Serial.println("\"");
+
+  }else if(eepromData.checksum == 0 && sbuff.startsWith("USER ")) {
+    sbuff.substring(5).toCharArray(eepromData.user, 64);
+    Serial.print("USERNAME set to: \""); Serial.print(eepromData.user); Serial.println("\"");
+
   }else if(eepromData.checksum == 0 && sbuff.startsWith("PORT ")) {
     uint16_t nPort = sbuff.substring(5).toInt();
     eepromData.serverPort = nPort == 0 ? DEFAULT_SERVER_PORT : nPort;
     Serial.print("PORT for telnet server set to: \""); Serial.print(eepromData.serverPort); Serial.println("\"");
+
   }else if(eepromData.checksum == 0 && sbuff.startsWith("IP ")) {
     eepromData.ip_address = parseIPAddressString(sbuff.substring(3));
     Serial.print("IP address set to: \""); Serial.print(IPAddress(eepromData.ip_address)); Serial.println("\"");
+
   }else if(eepromData.checksum == 0 && sbuff.startsWith("GW ")) {
     eepromData.gw_address = parseIPAddressString(sbuff.substring(3));
     Serial.print("GW address set to: \""); Serial.print(IPAddress(eepromData.gw_address)); Serial.println("\"");
+
   }else if(eepromData.checksum == 0 && sbuff.startsWith("SN ")) {
     eepromData.subnet_mask = parseIPAddressString(sbuff.substring(3));
     Serial.print("SN mask set to: \""); Serial.print(IPAddress(eepromData.subnet_mask)); Serial.println("\"");
-  }else if(eepromData.checksum == 0 && sbuff.startsWith("DISABLE STATIC")) {
+
+  }else if(eepromData.checksum == 0 && sbuff == "DISABLE STATIC") {
     Serial.print("Resetting static ip configuration... ");
     eepromData.ip_address = 0;
     eepromData.gw_address = 0;
     eepromData.subnet_mask = 0;
     Serial.println("DONE");
+
+  }else if(eepromData.checksum == 0 && sbuff == "DISABLE ENTERPRISE") {
+    Serial.print("Resetting enterprise username... ");
+    memset(&eepromData.user, 0, sizeof(eepromData.user));
+    Serial.println("DONE");
+
   }else if(server.status()) {
     //Transfer all lines not recognized as commands as data to all clients on the telnet server.
     server.print(sbuff); server.print("\n");
@@ -217,20 +249,52 @@ void loop() {
   }
   if(eepromData.checksum != 0) {
     if(WiFi.status() != WL_CONNECTED) {
-      Serial.print("Connecting to WiFi... ");
-      WiFi.config(IPAddress(eepromData.ip_address), IPAddress(eepromData.gw_address), IPAddress(eepromData.subnet_mask));
-      WiFi.begin(eepromData.ssid, eepromData.password);
+      Serial.print("Connecting to WiFi");
+      WiFi.mode(WIFI_STA); 
+
+      if(strlen(eepromData.user) != 0) {
+        Serial.print("-Enterprise... ");
+        wifi_set_opmode(STATION_MODE);
+
+        struct station_config wifi_config;
+
+        memset(&wifi_config, 0, sizeof(wifi_config));
+        strcpy((char*)wifi_config.ssid, eepromData.ssid);
+        strcpy((char*)wifi_config.password, eepromData.password);
+
+        wifi_station_set_config(&wifi_config);
+
+        wifi_station_set_wpa2_enterprise_auth(1);
+
+        // Clean up to be sure no old data is still inside
+        wifi_station_clear_cert_key();
+        wifi_station_clear_enterprise_ca_cert();
+        wifi_station_clear_enterprise_identity();
+        wifi_station_clear_enterprise_username();
+        wifi_station_clear_enterprise_password();
+        wifi_station_clear_enterprise_new_password();
+        
+        wifi_station_set_enterprise_identity((uint8*)eepromData.user, strlen(eepromData.user));
+        wifi_station_set_enterprise_username((uint8*)eepromData.user, strlen(eepromData.user));
+        wifi_station_set_enterprise_password((uint8*)eepromData.password, strlen((char*)eepromData.password));
+
+        wifi_station_connect();
+      }else {
+        Serial.print("... ");
+        WiFi.config(IPAddress(eepromData.ip_address), IPAddress(eepromData.gw_address), IPAddress(eepromData.subnet_mask));
+        WiFi.begin(eepromData.ssid, eepromData.password);
+      }
+
       Serial.println(wl_status_to_string((wl_status_t) WiFi.waitForConnectResult()));
-
-      delay(500);
-
+      delay(1000);
       showStatus();
     }else {
       if(!server.status()) {
-        Serial.print("Starting server on port: "); Serial.println(eepromData.serverPort);
-        server.begin(eepromData.serverPort);
+        uint16_t port = eepromData.serverPort == 0 ? DEFAULT_SERVER_PORT : eepromData.serverPort;
+        Serial.print("Starting server on port: "); Serial.println(port);
+        server.begin(port);
       }else {
-
+        //wifi connected and server running
       }
     }
   }
