@@ -1,8 +1,9 @@
 #include <util/delay.h>
 #include <Arduino.h>
 #include <avr/io.h>
-
 #include <dht.h>
+#include <SoftwareSerial.h>
+SoftwareSerial mySerial(2,3);
 
 #define SOUND_ANALOG_PIN A0
 #define DHT11_DIGITAL_PIN 5
@@ -21,11 +22,8 @@ void getTempHumid() {
   int chk = DHT.read11(DHT11_DIGITAL_PIN);
 
   if (chk == 0){
-    Serial.print("T"); Serial.print((int) DHT.temperature); Serial.print("\n");
-    Serial.print("H"); Serial.print((int) DHT.humidity); Serial.print("\n");
-  } else {
-    Serial.print("0\n");
-    Serial.print("0\n");
+    mySerial.print("T"); mySerial.print((int) DHT.temperature); mySerial.print("\n");
+    mySerial.print("H"); mySerial.print((int) DHT.humidity); mySerial.print("\n");
   }
 }
 
@@ -96,7 +94,9 @@ ISR(TIMER2_COMPA_vect) { // Timer 2 interupt
 
 void setup() {
   Serial.begin(57600);
-  delay(1000);
+  mySerial.begin(57600);
+  mySerial.listen();
+  delay(100);
 
   pinMode(SOUND_ANALOG_PIN, INPUT);
   pinMode(DHT11_DIGITAL_PIN, INPUT);
@@ -110,20 +110,28 @@ void setup() {
 }
 
 void loop() {
-    if (readDHT){
-      getTempHumid();
-      readDHT = false;
-    }
+  if (readDHT){
+    getTempHumid();
+    readDHT = false;
+  }
 
-    if (readSound){
-      readSound = false;
-      int valSound = analogRead(SOUND_ANALOG_PIN);
-      Serial.print("S"); Serial.print(valSound); Serial.print("\n");
-    }
+  if (readSound){
+    readSound = false;
+    int valSound = analogRead(SOUND_ANALOG_PIN);
+    mySerial.print("S"); mySerial.print(valSound); mySerial.print("\n");
+  }
 
-    if (readCO2){
-      int co2 = analogRead(CO2_PIN);
-      Serial.print("C"); Serial.print(co2); Serial.print("\n");
-      readCO2 = false;
-    }
+  if (readCO2){
+    int co2 = analogRead(CO2_PIN);
+    mySerial.print("C"); mySerial.print(co2); mySerial.print("\n");
+    readCO2 = false;
+  }
+
+  while(mySerial.available()) {
+    Serial.print((char) mySerial.read());
+  }
+
+  while(Serial.available()) {
+    mySerial.print((char) Serial.read());
+  }
 }
