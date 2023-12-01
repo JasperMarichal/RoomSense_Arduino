@@ -10,13 +10,16 @@ SoftwareSerial mySerial(2,3);
 #define CO2_PIN A4
 
 uint8_t counterTimer1 = 0;
-uint8_t counterTimer2 = 0;
+uint16_t counterTimer2 = 0;
 
 bool readDHT = false;
 bool readSound = false;
 bool readCO2 = false;
+bool wifiCommandMode = true;
 
 dht DHT;
+
+String commandSendBuffer;
 
 void getTempHumid() {
   int chk = DHT.read11(DHT11_DIGITAL_PIN);
@@ -24,6 +27,7 @@ void getTempHumid() {
   if (chk == 0){
     mySerial.print("T"); mySerial.print((int) DHT.temperature); mySerial.print("\n");
     mySerial.print("H"); mySerial.print((int) DHT.humidity); mySerial.print("\n");
+    // Serial.print("T"); Serial.print((int) DHT.temperature); Serial.print("\n");
   }
 }
 
@@ -84,13 +88,14 @@ ISR(TIMER1_COMPA_vect) { // Timer 1 interupt
 
 ISR(TIMER2_COMPA_vect) { // Timer 2 interupt 
     counterTimer2++;
-    if (counterTimer2 == 40){ // I don't know what speed we want to collect at, either 20 or 40 for the counter value
+    if (counterTimer2 == 80){ // I don't know what speed we want to collect at, either 20 or 40 for the counter value
       counterTimer2 = 0;
       readSound = true;
     }
 }
 //--------------------------------------------------------//
 
+uint16_t startTimer = 10000;
 
 void setup() {
   Serial.begin(57600);
@@ -105,26 +110,40 @@ void setup() {
   initTimer1();
   initTimer2();
 
-  startTimer1();
-  startTimer2();
+  commandSendBuffer = "";
 }
 
-void loop() {
-  if (readDHT){
-    getTempHumid();
-    readDHT = false;
+void loop() { 
+  if (startTimer > 0){
+    startTimer--;
+    delay(1);
   }
 
-  if (readSound){
-    readSound = false;
-    int valSound = analogRead(SOUND_ANALOG_PIN);
-    mySerial.print("S"); mySerial.print(valSound); mySerial.print("\n");
+  if (startTimer == 1){
+    wifiCommandMode = false;
+    startTimer1();
+    startTimer2();
   }
 
-  if (readCO2){
-    int co2 = analogRead(CO2_PIN);
-    mySerial.print("C"); mySerial.print(co2); mySerial.print("\n");
-    readCO2 = false;
+  if (!wifiCommandMode){
+    if (readDHT){
+      getTempHumid();
+      readDHT = false;
+    }
+
+    if (readSound){
+      readSound = false;
+      int valSound = analogRead(SOUND_ANALOG_PIN);
+      mySerial.print("S"); mySerial.print(valSound); mySerial.print("\n");
+      // Serial.print("S"); Serial.print(valSound); Serial.print("\n");
+    }
+
+    if (readCO2){
+      int co2 = analogRead(CO2_PIN);
+      mySerial.print("C"); mySerial.print(co2); mySerial.print("\n");
+      // Serial.print("C"); Serial.print(co2); Serial.print("\n");
+      readCO2 = false;
+    }
   }
 
   while(mySerial.available()) {
@@ -132,6 +151,28 @@ void loop() {
   }
 
   while(Serial.available()) {
-    mySerial.print((char) Serial.read());
+    char c = (char) Serial.read();
+    if(c == '\n') {
+      delay(100);
+      if (commandSendBuffer == "SENDING OFF"){
+          wifiCommandMode = true;
+          stopTimer1();
+          stopTimer2();
+          Serial.println("Ready for wifi commands...");
+      } else if (commandSendBuffer == "SENDING ON"){
+          wifiCommandMode = false;
+          Serial.println("Data sending begins");
+          startTimer1();
+          startTimer2();
+      } else {
+        mySerial.print(commandSendBuffer); mySerial.print("\n");
+      }
+      commandSendBuffer = "";
+      delay(100);
+    } else if (c == '\r'){
+      Serial.println("r Shown");
+    } else {
+      commandSendBuffer += c;
+    }
   }
 }
