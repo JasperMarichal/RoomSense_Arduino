@@ -11,6 +11,9 @@ SoftwareSerial mySerial(2,3);
 #define DHT11_DIGITAL_PIN 5
 #define CO2_PIN A4
 
+#define LED_CO2_WARNING_LEVEL 82 // ~ 2004 ppm
+#define LED_CO2_RISK_LEVEL 205 // ~ 5010 ppm
+
 #define RSLED_R 11
 #define RSLED_G 12
 #define RSLED_B 13
@@ -152,6 +155,14 @@ void loop() {
       int co2 = analogRead(CO2_PIN);
       mySerial.print("C"); mySerial.print(co2); mySerial.print("\n");
       readCO2 = false;
+
+      if(co2 < LED_CO2_WARNING_LEVEL) {
+        ledcmd("r");
+      }else if(co2 > LED_CO2_RISK_LEVEL) {
+        ledcmd("P");
+      }else {
+        ledcmd("R");
+      }
     }
   }
 

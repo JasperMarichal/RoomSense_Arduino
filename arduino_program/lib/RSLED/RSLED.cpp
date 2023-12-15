@@ -48,6 +48,12 @@ void ledcmd(String cmd) {
             B = true;
         }else if(c == 'b') {
             B = false;
+        }else if(c == 'P' || c == 'p') {
+            R = !R;
+        }else if(c == 'Z' || c == 'z') {
+            G = !G;
+        }else if(c == 'K' || c == 'k') {
+            B = !B;
         }
     }
 }

@@ -28,7 +28,7 @@ void updateLED(); // call from loop
 ledcmd changes the colors based on an led command string,
 the commands are formatted as such:
 
-[LED][R | r][G | g][B | b]
+[LED][R | r | P][G | g | Z][B | b | K]
 
 The command optionally starts with "LED",
 then the color is specified.
@@ -36,6 +36,8 @@ then the color is specified.
 The red green and blue values are optional, if one is not given
 it keeps its current state. Otherwise capital letters means to enable,
 and lowercase means to disable the corresponding color.
+There is also the option to toggle/flip a color's state:
+for red use 'P', for green 'Z' and for blue 'K'.
 
 */
 void ledcmd(String cmd);
