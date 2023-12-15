@@ -180,6 +180,8 @@ void loop() {
       }
     }else if(intercepting) {
       interceptBuffer += c;
+    }else {
+      Serial.print(c);
     }
   }
 
