@@ -157,11 +157,11 @@ void loop() {
       readCO2 = false;
 
       if(co2 < LED_CO2_WARNING_LEVEL) {
-        ledcmd("r");
+        ledcmd("rB");
       }else if(co2 > LED_CO2_RISK_LEVEL) {
-        ledcmd("P");
+        ledcmd("Pgb");
       }else {
-        ledcmd("R");
+        ledcmd("Rgb");
       }
     }
   }
