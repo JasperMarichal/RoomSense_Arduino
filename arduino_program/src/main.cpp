@@ -3,11 +3,17 @@
 #include <avr/io.h>
 #include <dht.h>
 #include <SoftwareSerial.h>
+#include <RSLED.h>
+
 SoftwareSerial mySerial(2,3);
 
 #define SOUND_ANALOG_PIN A0
 #define DHT11_DIGITAL_PIN 5
 #define CO2_PIN A4
+
+#define RSLED_R 11
+#define RSLED_G 12
+#define RSLED_B 13
 
 uint8_t counterTimer1 = 0;
 uint16_t counterTimer2 = 0;
@@ -21,15 +27,8 @@ dht DHT;
 
 String commandSendBuffer;
 
-void getTempHumid() {
-  int chk = DHT.read11(DHT11_DIGITAL_PIN);
-
-  if (chk == 0){
-    mySerial.print("T"); mySerial.print((int) DHT.temperature); mySerial.print("\n");
-    mySerial.print("H"); mySerial.print((int) DHT.humidity); mySerial.print("\n");
-    // Serial.print("T"); Serial.print((int) DHT.temperature); Serial.print("\n");
-  }
-}
+bool intercepting;
+String interceptBuffer;
 
 //---------------------TIMER SETUP------------------------//
 void initTimer1() {
@@ -110,10 +109,14 @@ void setup() {
   initTimer1();
   initTimer2();
 
+  initLED();
+
   commandSendBuffer = "";
+  interceptBuffer = "";
 }
 
-void loop() { 
+void loop() {
+  // COLLECTION START DELAY
   if (startTimer > 0){
     startTimer--;
     delay(1);
@@ -121,47 +124,70 @@ void loop() {
 
   if (startTimer == 1){
     wifiCommandMode = false;
+    ledcmd("B");
     startTimer1();
     startTimer2();
   }
 
+  // DATA COLLECTION
+  // SENSORS => ARDUINO => WIFI MODULE => ROOMSENSE RELAY (ReadingSerial)
   if (!wifiCommandMode){
     if (readDHT){
-      getTempHumid();
+      int chk = DHT.read11(DHT11_DIGITAL_PIN);
+
+      if (chk == 0){
+        mySerial.print("T"); mySerial.print((int) DHT.temperature); mySerial.print("\n");
+        mySerial.print("H"); mySerial.print((int) DHT.humidity); mySerial.print("\n");
+      }
       readDHT = false;
     }
 
     if (readSound){
-      readSound = false;
       int valSound = analogRead(SOUND_ANALOG_PIN);
       mySerial.print("S"); mySerial.print(valSound); mySerial.print("\n");
-      // Serial.print("S"); Serial.print(valSound); Serial.print("\n");
+      readSound = false;
     }
 
     if (readCO2){
       int co2 = analogRead(CO2_PIN);
       mySerial.print("C"); mySerial.print(co2); mySerial.print("\n");
-      // Serial.print("C"); Serial.print(co2); Serial.print("\n");
       readCO2 = false;
     }
   }
 
+  // WIFI MODULE => ARDUINO -> EXTERNAL MONITOR
   while(mySerial.available()) {
-    Serial.print((char) mySerial.read());
+    char c = (char) mySerial.read();
+    if(!intercepting && c == '$') {
+      intercepting = true;
+      interceptBuffer = "";
+    }else if(intercepting && c == ';') {
+      intercepting = false;
+
+      if(interceptBuffer.startsWith("LED")) {
+        ledcmd(interceptBuffer);
+      }
+    }else if(intercepting) {
+      interceptBuffer += c;
+    }
   }
 
+  // EXTERNAL MONITOR -> ARDUINO => WIFI MODULE
   while(Serial.available()) {
     char c = (char) Serial.read();
     if(c == '\n') {
       delay(100);
       if (commandSendBuffer == "SENDING OFF"){
           wifiCommandMode = true;
+          startTimer = 0;
           stopTimer1();
           stopTimer2();
-          Serial.println("Ready for wifi commands...");
+          Serial.println("Data collection paused...");
+          ledcmd("b");
       } else if (commandSendBuffer == "SENDING ON"){
           wifiCommandMode = false;
-          Serial.println("Data sending begins");
+          Serial.println("Data collection resumed...");
+          ledcmd("B");
           startTimer1();
           startTimer2();
       } else {
@@ -175,4 +201,7 @@ void loop() {
       commandSendBuffer += c;
     }
   }
+
+  // update led states
+  updateLED();
 }
