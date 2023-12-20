@@ -33,6 +33,8 @@ String commandSendBuffer;
 bool intercepting;
 String interceptBuffer;
 
+bool wifiConnectionState;
+
 //---------------------TIMER SETUP------------------------//
 void initTimer1() {
   // Set Timer 1 to CTC mode
@@ -158,6 +160,7 @@ void loop() {
 
       if(co2 < LED_CO2_WARNING_LEVEL) {
         ledcmd("rB");
+        wifiConnectionState ? ledcmd("G") : ledcmd("g");
       }else if(co2 > LED_CO2_RISK_LEVEL) {
         ledcmd("Pgb");
       }else {
@@ -175,9 +178,16 @@ void loop() {
     }else if(intercepting && c == ';') {
       intercepting = false;
 
-      if(interceptBuffer.startsWith("LED")) {
-        ledcmd(interceptBuffer);
-      }
+      if(interceptBuffer.startsWith("WCSTATE")) {
+        if(interceptBuffer.endsWith("OFF")) {
+          wifiConnectionState = false;
+        }else if(interceptBuffer.endsWith("ON")) {
+          wifiConnectionState = true;
+        }
+
+      }else if(interceptBuffer.startsWith("LED")) {
+        ledcmd(interceptBuffer); //Allow for direct LED control by wifi module
+      } 
     }else if(intercepting) {
       interceptBuffer += c;
     }else {

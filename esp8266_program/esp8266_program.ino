@@ -44,6 +44,7 @@ void setup() {
   Serial.println(reloadFromEEPROM() ? (eepromData.checksum == 0 ? "EMPTY" : "LOADED") : "!CHECKSUM");
 
   showConfig();
+  Serial.print("$WCSTATEOFF;");
 }
 
 const char* wl_status_to_string(wl_status_t status) {
@@ -90,6 +91,7 @@ void stopStuff() {
   Serial.println("Server: STOPPED");
   WiFi.disconnect();
   Serial.print("WiFi: DISCONNECTED ("); Serial.print(wl_status_to_string((wl_status_t) WiFi.waitForConnectResult())); Serial.println(")");
+  Serial.print("$WCSTATEOFF;");
 }
 
 void resetConfig() {
@@ -167,13 +169,11 @@ void processCommand(String sbuff) {
 
   }else if(sbuff == "CONFIG RESET") {
     resetConfig();
-    Serial.print("$LEDg;");
 
   }else if(sbuff == "CONFIG EDIT") {
     stopStuff();
     eepromData.checksum = 0;
     if(eepromData.checksum == 0) Serial.println("You can now type config commands.");
-    Serial.print("$LEDg;");
 
   }else if(sbuff == "CONFIG COMMIT") {
     if(eepromData.checksum == calculateEEPROMChecksum()) {
@@ -187,7 +187,6 @@ void processCommand(String sbuff) {
       EEPROM.put(0, eepromData);
       Serial.println(EEPROM.commit() ? "OKAY" : "COMMIT FAIL");
     }
-    Serial.print("$LEDG;");
     
   }else if(sbuff == "CONFIG RESTORE") {
     Serial.print("Reloading from eeprom... "); Serial.println(reloadFromEEPROM() ? "DONE" : "CHECKSUM ERROR");
@@ -287,16 +286,18 @@ void loop() {
         WiFi.config(IPAddress(eepromData.ip_address), IPAddress(eepromData.gw_address), IPAddress(eepromData.subnet_mask));
         WiFi.begin(eepromData.ssid, eepromData.password);
       }
-      Serial.print("$LEDZ;");
       Serial.println(wl_status_to_string((wl_status_t) WiFi.waitForConnectResult()));
+      Serial.print("$WCSTATEON;");
       delay(1000);
+      Serial.print("$WCSTATEOFF;");
       showStatus();
     }else {
       if(!server.status()) {
+        Serial.print("$WCSTATEOFF;");
         uint16_t port = eepromData.serverPort == 0 ? DEFAULT_SERVER_PORT : eepromData.serverPort;
         Serial.print("Starting server on port: "); Serial.println(port);
         server.begin(port);
-        Serial.print("$LEDG;");
+        Serial.print("$WCSTATEON;");
       }else {
         //wifi connected and server running
       }
