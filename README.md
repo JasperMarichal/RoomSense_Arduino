@@ -87,14 +87,14 @@ To upload code to the WiFi module (to have the Arduino IDE find the board): In t
 ##### ESP8266 Code
 ###### This is a project made in the Arduino IDE
 - ESP_EEPROM - v2.2.0 - Needs install via arduino IDE
-    - Used for persisting config between resets and power offs
+    - Used for persisting the wifi config between resets and power offs
 - ESP8266WiFi
-    - Used for connecting to the wifi network using static IP
+    - Used for connecting to the wifi network using static IP or DHCP
 - ArduinoWiFiServer
     - Simple telnet server used to transmit the sensor data on the local network, the wifi module hosts a small telnet server to which the ReadingSerial project connects to
 - user_interface
-    - Used by the wifi module
+    - Used by the wifi module (to interact with the SDK used for the wifi library)
 - wpa2_enterprise
-    - Used for connecting to WPA-2 enterprise networks, static IP settings are ignored in this case and it is experimental
+    - Used for connecting to WPA-2 enterprise networks, static IP settings are ignored in this case and this is an experimental feature
 - c_types
     - To be able to use uint16_t and such types
