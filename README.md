@@ -7,8 +7,8 @@ Reviewers: Abel Turlej, Anna Vorozhtsova, Jasper Marichal
 
 ### Introduction
 Our arduino codebase includes two seperate programs:
-    - The program that runs on the Arduino and collects the sensor data (located in the /arduino_program subfolder)
-    - The program that runs on our WiFi module (ESP8266 microcontroller) that sends this data on using wifi (located in the /esp8266_program subfolder)
+- The program that runs on the Arduino and collects the sensor data (located in the /arduino_program subfolder)
+- The program that runs on our WiFi module (ESP8266 microcontroller) that sends this data on using wifi (located in the /esp8266_program subfolder)
 
 To upload code to the WiFi module (to have the Arduino IDE find the board): In the Arduino IDE open File > Preferences and then in the "Additional boards manager URLs" add the following link: https://arduino.esp8266.com/stable/package_esp8266com_index.json
 ![Arduino IDE Preferences](./images/ArduinoIDEPreferences.png)
