@@ -2,9 +2,11 @@
 ## Team 03 - RoomSense
 
 Team members responsible: Roman Gordon, Boldizsar Olajos
+
 Reviewers: Abel Turlej, Anna Vorozhtsova, Jasper Marichal
 
 To upload code to the WiFi module (to have the Arduino IDE find the board): In the Arduino IDE open File > Preferences and then in the "Additional boards manager URLs" add the following link: https://arduino.esp8266.com/stable/package_esp8266com_index.json
+![Arduino IDE Preferences](./images/ArduinoIDEPreferences.png)
 
 ### Installation and Configuration Instructions
 #### Install device
