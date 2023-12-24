@@ -13,6 +13,12 @@ Our arduino codebase includes two seperate programs:
 To upload code to the WiFi module (to have the Arduino IDE find the board): In the Arduino IDE open File > Preferences and then in the "Additional boards manager URLs" add the following link: https://arduino.esp8266.com/stable/package_esp8266com_index.json
 ![Arduino IDE Preferences](./images/ArduinoIDEPreferences.png)
 
+### Other projects:
+- ReadingSerial project used for connecting to the arduino and saving data to the database:
+    - https://gitlab.com/kdg-ti/integration-2.1/23-24/group-3/readingserial
+- SpringProject, main project used to host website and process data:
+    - https://gitlab.com/kdg-ti/integration-2.1/23-24/group-3/springproject
+
 ### Installation and Configuration Instructions
 #### Install device
 1. Mount the device to a wall or a place you want
