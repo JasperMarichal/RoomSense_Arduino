@@ -4,6 +4,8 @@
 Team members responsible: Roman Gordon, Boldizsar Olajos
 Reviewers: Abel Turlej, Anna Vorozhtsova, Jasper Marichal
 
+To upload code to the WiFi module (to have the Arduino IDE find the board): In the Arduino IDE open File > Preferences and then in the "Additional boards manager URLs" add the following link: https://arduino.esp8266.com/stable/package_esp8266com_index.json
+
 ### Installation and Configuration Instructions
 #### Install device
 1. Mount the device to a wall or a place you want
@@ -33,10 +35,59 @@ Reviewers: Abel Turlej, Anna Vorozhtsova, Jasper Marichal
 
 ###### Save Configuration
 1. Enter the command “CONFIG COMMIT” to save the configuration changes
-1. Or enter the command “CONFIG RESTORE” to discard the changes (only restore correctly if “CONFIG EDIT” was used)
+-  Or enter the command “CONFIG RESTORE” to discard the changes (only restore correctly if “CONFIG EDIT” was used)
 2. Then unplug the device from the computer and plug it back in to its own USB-A port
 3. Plug the device into the power outlet using the DC adapter
 
 ##### General Commands
 - Command “CONFIG SHOW”: Show the active configuration
 - Command “STATUS”: Show the wifi adapter status
+
+#### Sensor Specifications:
+- DHT11
+    - Humidity sensor: 
+        - 30% to 90% humidity at 0°C
+        - 20% to 90% humidity at 25°C
+        - 20% to 80% humidity at 50°C
+        - 6s - 15s response time
+        - +/- 1% accuracy
+    - Temperature sensor:
+        - 0°C to 50°C measuring range
+        - +/- 1°C accuracy
+        - 6s - 30s repsonse time
+- MG811
+    - CO2 sensor:
+        - Operational temperature -20°C - 50°C
+        - Output 0—10000ppm CO2
+- KY038
+    - Sound Sensor
+        - Detection distance 10-80cm
+        - Detection frequency range 3kHz - 6kHz
+        - Operational temperature: -20°C - 80°C
+
+
+#### Libraries Used:
+##### Main Arduino Code 
+###### All of these are found in lib folder of platformio project
+- DHTlib 
+    - Used to read from the DHT11
+- RSLED 
+    - Used to control the LED indicator
+    - In-house library
+- SoftwareSerial 
+    - Used to send and recieve data to/from the ESP8266 (wifi module)
+
+##### ESP8266 Code
+###### This is a project made in the Arduino IDE
+- ESP_EEPROM - v2.2.0 - Needs install via arduino IDE
+    - Used for persisting config between resets and power offs
+- ESP8266WiFi
+    - Used for connecting to the wifi network using static IP
+- ArduinoWiFiServer
+    - Simple telnet server used to transmit the sensor data on the local network, the wifi module hosts a small telnet server to which the ReadingSerial project connects to
+- user_interface
+    - Used by the wifi module
+- wpa2_enterprise
+    - Used for connecting to WPA-2 enterprise networks, static IP settings are ignored in this case and it is experimental
+- c_types
+    - To be able to use uint16_t and such types
