@@ -15,9 +15,9 @@ To upload code to the WiFi module (to have the Arduino IDE find the board): In t
 
 ### Other projects:
 - ReadingSerial project used for connecting to the arduino and saving data to the database:
-    - https://gitlab.com/kdg-ti/integration-2.1/23-24/group-3/readingserial
+    - https://github.com/JasperMarichal/RoomSense_ReadingSerial
 - SpringProject, main project used to host website and process data:
-    - https://gitlab.com/kdg-ti/integration-2.1/23-24/group-3/springproject
+    - https://github.com/JasperMarichal/RoomSense_SpringApplication
 
 ### Installation and Configuration Instructions
 #### Install device
